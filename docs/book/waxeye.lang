@@ -1,0 +1,17 @@
+include "c_string.lang"
+
+comment start "#"
+
+comment delim "/*" "*/" multiline nested
+
+environment symbol delim "[" "]" begin
+  specialchar = '\\.'
+end
+
+cbracket = "(|)"
+
+keyword = '[[:alpha:]][[:alnum:]_-]*[[:blank:]]*(?=<[:=-])'
+
+function = '<[:=-]'
+
+preproc = '[!&*+?|]'

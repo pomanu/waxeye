@@ -1,0 +1,3 @@
+#!/bin/sh
+
+mzscheme -qt- build/build.scm $*

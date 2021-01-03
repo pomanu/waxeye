@@ -1,0 +1,1171 @@
+Language Development with Waxeye
+================================
+Orlando Hill
+version 0.9.0-dev, January 2021
+
+
+
+== Introduction ==
+
+As programmers, we are required to make use of data that is presented in a
+variety of formats. In order to extract and manipulate the desired information,
+we need the ability to navigate the structure of the language the data is
+written in. Unless the language is very simple, we must use a parser that
+understands the language and gives us the data in a form we can more readily
+use.
+
+Manually creating parsers can be boring and time consuming. It is, therefore,
+common to use a use parser generator to do the grunt work of constructing the
+parser. This is where Waxeye comes in handy.
+
+
+
+== Getting Started ==
+
+=== Downloading ===
+
+You can download the latest version of Waxeye's source code from
+https://github.com/pomanu/waxeye[GitHub].
+
+
+=== Requirements ===
+
+There are no external dependencies needed to run a pre-built version of Waxeye.
+If you build from source, you'll need http://racket-lang.org[Racket].
+
+To use a generated parser, you need a supported programming language to run it
+from.
+
+
+=== Installation ===
+
+==== Unix and MacOSX ====
+1. Extract the files of the distribution.
+
+2. Copy the 'waxeye' directory to where you wish to install it.
+
+3. Add the 'bin/waxeye' binary to your search path. e.g. If you have `~/bin` in
+   your PATH and installed waxeye to '/usr/local/waxeye' then you might do the
+   following.
+
+-------------------------------------------------------------------------------
+ln -s /usr/local/waxeye/bin/waxeye ~/bin/
+-------------------------------------------------------------------------------
+
+==== Windows ====
+
+1. Extract the files of the distribution.
+
+2. Copy the 'waxeye' directory to where you wish to install it.
+
+
+=== Running ===
+
+Currently, Waxeye is used from a command-line interface. You can use it as a
+command-line tool or, as part of a script or build-system. There are plans to
+develop a graphical tool at a later stage.
+
+==== Unix and MacOSX ====
+
+Run Waxeye by executing the `waxeye` binary.
+
+==== Windows ====
+
+Use a command prompt to run `waxeye.exe`.
+
+
+
+== Basic Concepts ==
+
+=== What is a parser? ===
+
+When we want to understand data that has been written in a language of interest
+('L'), we need to break our data into units of the language. This process of
+breaking our input into different parts, based on the structure of 'L', is
+called 'parsing'. A program used for parsing is called a 'parser'.
+
+
+=== What is the result of a parser? ===
+
+Once your input has been parsed, you need the result to be presented in a from
+that is easy to understand and manipulate. Since the input was organized based
+on the hierarchical structure of the language, it makes sense that the output
+of the parser mimic this structure. The most effective form to do this with is
+a tree.
+
+Such a tree is known as an Abstract Syntax Tree (AST). A Waxeye parser will
+automatically give you an AST that represents your input. The structure of this
+AST is based on the structure of your language's grammar.
+
+
+=== What is a parser generator? ===
+
+If 'L' is simple, it is easy for us to use our programming lanugage of choice
+to, manually, write a parser for 'L'. However, as the structural complexity of
+'L' increases, so too, does the size and complexity of the parser program.
+Writing and maintaining a large parser, by hand, can quickly become a tedious
+and laborious job. Thankfully, we can use a parser generator to automate the
+work of creating a parser so we can focus on other problems.
+
+A parser generator is a tool designed to help software developers automate the
+process of creating a parser. Just like compilers and assemblers, a parser
+generator takes a description of a program, automatically does the boring work
+for you and gives you a transformed program as output. Each tool accepts input
+in one language ('L1'), performs various transformations and creates output in
+another language ('L2').
+
+ L1 --> Compiler         --> L2
+ L1 --> Assembler        --> L2
+ L1 --> Parser Generator --> L2
+
+The key difference between the three tools is the level of abstraction held by
+the input and output languages. The assembler works at the lowest level by
+taking assembly files and producing machine code. The compiler works above the
+assembler by taking a more abstract programming language and generating
+assembly files or machine code directly. Finally, the parser generator has the
+highest level of abstraction and transforms a 'grammar file' into programming
+language source code for a compiler to process.
+
+
+=== What is a grammar file? ===
+
+We can define a language as the set of strings it contains. While it is
+sometimes possible to specify a language simply by enumerating all of its
+strings, such an approach has significant drawbacks. Trying to write each
+string in our language could be very time consuming and, potentially, take
+forever.
+
+Suppose we need to read time information as part of a larger program. In a
+trivial case, the time information may be presented as two digits for the
+hours, a colon `:`, and then two digits for the minutes.
+
+-------------------------------------------------------------------------------
+00:00, 00:01, 00:02, ... 14:23, 14:24, 14:25, ... 23:57, 23:58, 23:59
+-------------------------------------------------------------------------------
+
+We could describe our time language this way but, writing all 1,440 possible
+hour/minute combinations wouldn't be much fun. Not to mention how bad things
+would be if we extended our language to include date information.
+
+As another example, consider the language that consists of all strings of one
+or more alphabet character.
+
+-------------------------------------------------------------------------------
+a, b, c, ... z, aa, ab, ac, ... az, aaa, aab, aac, ...
+-------------------------------------------------------------------------------
+
+Even worse than our time example, this language is infinite. It would be
+impossible for us to explicitly list every string in the language.
+
+If we want to describe such languages, we need a notation that is more abstract
+than simply writing out strings. We call this notation a 'grammar' and the file
+that contains it a 'grammar file'.
+
+
+
+== Waxeye Grammars ==
+
+To generate a parser for a language, you must supply the parser generator with
+a grammar file that describes the language. Waxeye grammar files are written as
+text documents and are, by convention, given the `.waxeye` file extension.
+
+A Waxeye grammar consists of a set of rule definitions, called 'non-terminals'.
+Together, the non-terminals succinctly describe the syntax of the language. By
+default, the first non-terminal is considered the starting point of the
+language definition.
+
+
+=== Non-terminals ===
+
+Non-terminals are defined in three parts; a name, a rule type and one or more
+grammar expressions.
+
+The most common non-terminal type is the tree constructing non-terminal. A tree
+constructing non-terminal has the following form:
+
+*******************************************************************************
+'Name' `<-` '+expressions'
+*******************************************************************************
+
+Where 'Name' matches `[a-zA-Z_] *[a-zA-Z0-9_-]`.
+
+[source,waxeye]
+.A tree constructing non-terminal
+-------------------------------------------------------------------------------
+Example <- A | B
+-------------------------------------------------------------------------------
+
+
+The other common non-terminal type is the void non-terminal. The result of a
+void non-terminal is not included in the AST that is constructed by the parser.
+To define a void non-terminal, use this form:
+
+*******************************************************************************
+'Name' `<:` '+expressions'
+*******************************************************************************
+
+[source,waxeye]
+.A void non-terminal
+-------------------------------------------------------------------------------
+Example <: A | B
+-------------------------------------------------------------------------------
+
+
+
+=== Expressions ===
+
+The most important part of each non-terminal definition is the set of
+expressions it contains. Grammar expressions come in different forms and have
+their own meanings. Places where an expression can be contained within another
+expression are denoted with an 'e'.
+
+
+==== Atomic Expressions ====
+
+===== Wildcard =====
+`.`
+
+Matches any character from the input.
+
+
+===== Literal =====
+`'text'`
+
+Matches `text` in the input.
+
+
+===== Case-insensitive Literal =====
+`"text"`
+
+Matches `text` in the input while ignores case. This is equivalent to the
+expression `[tT][eE][xX][tT]` but, is much more readable.
+
+
+===== Character Class =====
+`[a-z_-]`
+
+Character-class that matches either a lower-case English character, `_` or
+`-`.
+
+
+===== Non-terminal =====
+`NT`
+
+References the non-terminal named `NT`.
+
+
+===== Parentheses =====
+`(`'e'`)`
+
+Raises the precedence of the expression 'e'.
+
+
+///////////////////////////////////////////////////////////////////////////////
+===== Context Actions =====
+`@action<a, b>`
+
+References the context-action `action` and gives the action the data held by
+the labels `a` and `b`. These are used for context-sensitive parsing. Not fully
+implemented yet.
+///////////////////////////////////////////////////////////////////////////////
+
+
+==== Prefix Expressions ====
+
+===== Void =====
+`:`'e'
+
+Doesn't include the result of 'e' when building the AST.
+
+
+===== Closure =====
+`*`'e'
+
+Puts 'e' within a closure.
+
+
+===== Plus =====
+`+`'e'
+
+Puts 'e' within a plus-closure.
+
+
+===== Optional =====
+`?`'e'
+
+Puts 'e' within an optional.
+
+
+===== Negative Check =====
+`!`'e'
+
+Checks that 'e' fails.
+
+
+===== Positive Check =====
+`&`'e'
+
+Checks that 'e' succeeds.
+
+
+///////////////////////////////////////////////////////////////////////////////
+===== Labels =====
+`a=`'e'
+
+Labels the expression 'e' with the label `a`. Not fully implemented yet.
+///////////////////////////////////////////////////////////////////////////////
+
+
+==== Sequence Expressions ====
+'e1 e2'
+
+Matches 'e1' and 'e2' in sequence.
+
+
+==== Alternation Expressions ====
+'e1'`|`'e2'
+
+Tries to match 'e1' and, if that fails, tries to match 'e2'.
+
+
+=== Precedence ===
+
+In Waxeye grammars, some expressions can have other expressions nested within
+them. When we use parentheses, we are explicitly denoting the nesting structure
+of the expressions.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+((?A) B) | C
+-------------------------------------------------------------------------------
+
+At times, this can seem needlessly verbose. In many cases, we are able to omit
+the parentheses in favor of a shorter notation. We do this by exploiting the
+precedence of each expression type.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+?A B | C
+-------------------------------------------------------------------------------
+
+The precedence of an expression determines the priority it has when resolving
+implicitly nested expressions. Each expression type has a level of precedence
+relative to all other types. There are four different precedence levels in
+Waxeye grammars.
+
+
+==== Level 4 ====
+
+The highest precedence is held by the atomic expressions. Because these
+expressions cannot, themselves, contain expressions, there is no need to
+consider which expressions are nested within them.
+
+
+==== Level 3 ====
+
+The prefix expressions hold the next precedence level. Their nesting is
+resolved directly after the atomic expressions.
+
+
+==== Level 2 ====
+
+Sequences of expressions are formed once the atomic and prefix expressions have
+been resolved.
+
+
+==== Level 1 ====
+
+Finally, once all other expressions have been resolved, the different choices of
+the alternation expression are resolved.
+
+
+
+=== Pruning Non-terminals ===
+
+Sometimes, creating a new AST node will give us more information than we need.
+We might want to create a new AST node, only if doing so will tell us something
+interesting about our input. If the additional node gives us nothing of
+interest, our tree could be said to contain 'vertical noise'.
+
+To make it easier to process the AST, we can remove this vertical noise by
+using the 'pruning' non-terminal type. This non-terminal type has the following
+form:
+
+*******************************************************************************
+'Name' `<=` '+expressions'
+*******************************************************************************
+
+When 'Name' has successfully parsed a string, one of three things will happen,
+depending on the number of results to be included from 'Name''s expressions.
+
+* If there are no expression results to be included, nothing new will be added
+  to the AST.
+
+* If there is one expression result to be included, that result will take the
+  place of the 'Name' AST node.
+
+* Otherwise, a new 'Name' AST node will be created, just like a tree
+  constructing non-terminal.
+
+
+To help understand how this works, consider an example from a simple arithmetic
+grammar.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+Product <- Number *([*/] Number)
+
+Number  <- +[0-9]
+-------------------------------------------------------------------------------
+
+If we use the 'Product' rule to parse the string `3*7`, we get a tree with
+'Product' at the root and, below that, a 'Number', a `*` character and then
+another 'Number'.
+
+-------------------------------------------------------------------------------
+Product
+->  Number
+    |   3
+|   *
+->  Number
+    |   7
+-------------------------------------------------------------------------------
+
+However, if the 'Product' rule parses a string with just one 'Number' in it, we
+will get a tree that is slightly bigger than we need. Parsing the string `5`
+produces the following tree. 
+
+-------------------------------------------------------------------------------
+Product
+->  Number
+    |   5
+-------------------------------------------------------------------------------
+
+In this case, having a 'Product' node at the root of the AST isn't necessary.
+If we want to, we can rewrite the original grammar to use a pruning
+non-terminal.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+Product <= Number *([*/] Number)
+
+Number  <- +[0-9]
+-------------------------------------------------------------------------------
+
+Now, when we use 'Product' to parse `3*7`, we will get the same result as
+before but, when parsing `5`, we get an AST with 'Number' as the root.
+
+-------------------------------------------------------------------------------
+Number
+|   5
+-------------------------------------------------------------------------------
+
+
+As a second example, let's look at a grammar for nested parentheses.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+A <- :'(' A :')' | B
+
+B <- 'b'
+-------------------------------------------------------------------------------
+
+Here are some example inputs and their resulting ASTs:
+
+Input: `b`
+
+-------------------------------------------------------------------------------
+A
+->  B
+    |   b
+-------------------------------------------------------------------------------
+
+Input: `(b)`
+
+-------------------------------------------------------------------------------
+A
+->  A
+    ->  B
+        |   b
+-------------------------------------------------------------------------------
+
+Input: `(((b)))`
+
+-------------------------------------------------------------------------------
+A
+->  A
+    ->  A
+        ->  A
+            ->  B
+                |   b
+-------------------------------------------------------------------------------
+
+Unless we want to know the number of parentheses matched, trees like these
+contain more information than we need. Again, we are able to solve this by
+rewriting the grammar using a 'pruning' non-terminal.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+A <= :'(' A :')' | B
+
+B <- 'b'
+-------------------------------------------------------------------------------
+
+This time, parsing the input `(((b)))` gives us a much shorter tree.
+
+-------------------------------------------------------------------------------
+B
+|   b
+-------------------------------------------------------------------------------
+
+
+=== Comments ===
+
+There are two types of comments in Waxeye grammars; single-line and multi-line.
+
+==== Single-line ====
+
+Single-line comments start at the first `#` outside of an atomic expression and
+extend until the end of the line.
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+# This is a single-line comment.
+-------------------------------------------------------------------------------
+
+
+==== Multi-line ====
+
+Multi-line comments are opened at the first `/*` outside of an atomic
+expression and closed with a `*/`.
+
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+/* This is a multi-line comment. */
+-------------------------------------------------------------------------------
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+/* This is, also,
+   a multi-line comment. */
+-------------------------------------------------------------------------------
+
+
+As an added convenience for when editing a grammar, multi-line comments can be
+nested within each other. This is handy when you want to comment out a section
+of the grammar that already contains a comment.
+
+
+[source,waxeye]
+-------------------------------------------------------------------------------
+/*
+
+This is the outer comment.
+
+A <- 'a'
+
+/*
+ * This is the inner comment.
+ */
+B <- 'b'
+
+*/
+-------------------------------------------------------------------------------
+
+
+
+
+== Using Waxeye ==
+
+This chapter will show you how to setup Waxeye for your programming language.
+It covers language specific installation requirements and presents some basic
+boilerplate code to get you started. You can find copies of this boilerplate
+code in `src/example/`. I use `$WAXEYE_HOME` to refer to the location where you
+have installed the files of the Waxeye distribution.
+
+The example grammar we'll be using can be found in `grammars/num.waxeye`. You
+may wish to copy it to the directory you're working in so you can experiment
+with extending and modifying the grammar.
+
+.grammars/num.waxeye
+[source,waxeye]
+-------------------------------------------------------------------------------
+Num <- '0' | [1-9] *[0-9]
+-------------------------------------------------------------------------------
+
+Once setup and run, the boilerplate example will use the parser you generated
+to parse the string `42` and print the AST it creates.
+
+-------------------------------------------------------------------------------
+Num
+|   4
+|   2
+-------------------------------------------------------------------------------
+
+
+
+=== Using Waxeye from Scheme ===
+
+Waxeye's Scheme runtime is compatible with http://racket-lang.org/[Racket].
+
+==== Install ====
+
+Install the waxeye collection where Racket can find it.
+
+-------------------------------------------------------------------------------
+# Install the Waxeye collection; change to your install paths as needed
+sudo ln -s /usr/local/waxeye/src/scheme/waxeye /usr/local/racket/lib/racket/collects/
+-------------------------------------------------------------------------------
+
+==== Generate Parser ====
+
+-------------------------------------------------------------------------------
+waxeye -g scheme . num.waxeye
+-------------------------------------------------------------------------------
+
+==== Use Parser ====
+
+.src/example/scheme/example.scm
+[source,scheme]
+-------------------------------------------------------------------------------
+(module
+example
+mzscheme
+
+(require "parser.scm")
+
+;; Parse our input
+(let ((ast (parser "42")))
+  ;; Print our AST
+  (display-ast ast))
+
+)
+-------------------------------------------------------------------------------
+
+==== Run from Racket ====
+
+-------------------------------------------------------------------------------
+racket -t example.scm
+-------------------------------------------------------------------------------
+
+
+
+== Using ASTs and Parse Errors ==
+
+Since just printing an Abstract Syntax Tree isn't very interesting, let's have
+a look at how to access the information the ASTs contain.
+
+When you use a Waxeye parser, the result will be one of two things. If the
+parser successfully parsed the input, the result will be an AST. If the input
+doesn't match the syntax of the language, the result will be a 'parse error'.
+
+
+=== ASTs ===
+
+ASTs come in three different forms; 'tree', 'char' and 'empty'.
+
+* A 'tree' AST contains a type, a list of children and, the start and end
+  position in the input.
+
+* A 'char' AST contains a single character and has no children.
+
+* An 'empty' AST simply signifies that parsing was successful. If your starting
+  non-terminal is voided or is pruning and had no children, you will get an
+  empty AST.
+
+
+==== Using an AST node as string ====
+
+If a given AST node will only ever have 'char' children, you may wish to treat
+that node as a single string.
+
+
+===== From Scheme =====
+
+[source,scheme]
+-------------------------------------------------------------------------------
+(display (list->string (ast-c ast)))
+(newline)
+-------------------------------------------------------------------------------
+
+
+
+=== Parse Errors ===
+
+A parse error contains information about where the input is invalid and hints
+about what is wrong with it.
+
+
+
+=== Determining the result type ===
+
+
+==== From Scheme ====
+
+[source,scheme]
+-------------------------------------------------------------------------------
+(cond
+  ((ast? result) "tree ast")
+  ((parse-error? result) "error")
+  (else "empty ast"))
+-------------------------------------------------------------------------------
+
+
+
+
+== Example: A Calculator ==
+
+Now that we know how to write grammars, generate parsers and manipulate AST, we
+can put these skills together to build a small language interpreter. In this
+chapter, we create a command-line calculator.
+
+Our calculator reads a line of input, parses it as an arithmetic expression and
+computes the result. The arithmetic language supports the following constructs.
+
+* floating point numbers
+* binary operators +,-,*,/
+* unary negation
+* parentheses
+
+
+.grammars/calc.waxeye
+[source,waxeye]
+-------------------------------------------------------------------------------
+calc  <- ws sum
+
+sum   <- prod *([+-] ws prod)
+
+prod  <- unary *([*/] ws unary)
+
+unary <= '-' ws unary
+       | :'(' ws sum :')' ws
+       | num
+
+num   <- +[0-9] ?('.' +[0-9]) ws
+
+ws    <: *[ \t\n\r]
+-------------------------------------------------------------------------------
+
+
+=== Calculator in Scheme ===
+
+.src/example/scheme/calculator.scm
+[source,scheme]
+-------------------------------------------------------------------------------
+(module
+calculator
+mzscheme
+
+(require "parser.scm")
+
+;; A commandline arithmetic calculator.
+
+(define (calc input)
+  (let ((ast (parser input)))
+    (if (ast? ast)
+        (begin (display (sum (car (ast-c ast))))
+               (newline))
+        (display-parse-error ast))))
+
+
+(define (bin-op ast fn ch op1 op2)
+  (let* ((chil (list->vector (ast-c ast)))
+         (val (fn (vector-ref chil 0))))
+    (let loop ((i 1))
+      (unless (= i (vector-length chil))
+              ;; Increment val by the operator applied to val and the operand
+              (set! val ((if (equal? (vector-ref chil i) ch) op1 op2)
+                         val (fn (vector-ref chil (+ i 1)))))
+              (loop (+ i 2))))
+    val))
+
+
+(define (sum ast)
+  (bin-op ast prod #\+ + -))
+
+
+(define (prod ast)
+  (bin-op ast unary #\* * /))
+
+
+(define (unary ast)
+  (case (ast-t ast)
+    ((unary) (- (unary (cadr (ast-c ast)))))
+    ((sum) (sum ast))
+    (else (num ast))))
+
+
+(define (num ast)
+  (string->number (list->string (ast-c ast))))
+
+
+(define (rl)
+  (display "calc> ")
+  (read-line (current-input-port)))
+
+
+(let loop ((input (rl)))
+  (if (eof-object? input)
+      (newline)
+      (begin (calc input)
+             (loop (rl)))))
+
+)
+-------------------------------------------------------------------------------
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+== A Short Example ==
+
+This chapter will introduce you to the basic work-flow used with Waxeye. In the
+process, we will iteratively develop the grammar of a simple real-world
+language.
+
+
+== Using the Interpreter ==
+todo
+
+== Extended Example ==
+todo
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+== Grammar Testing ==
+
+.test/grammars/waxeye.scm
+[source,scheme]
+-------------------------------------------------------------------------------
+;; These are tests for the 'Grammar' non-terminal
+(Grammar ; <- This is the non-terminal's name
+
+ ;; Following the name are pairs of input string and expected output. The
+ ;; output is either the keyword 'pass', the keyword 'fail' or an AST. The AST
+ ;; specifies the structure of the expected tree, the names of the nodes and
+ ;; the individual characters. If you don't want to specify the whole tree,
+ ;; just use the wild-card symbol '*' for the portion of the tree you want to
+ ;; skip.
+
+ "" ; <- This is the input
+ (Grammar) ; <- This is the expected output
+
+ "A <- 'a'"
+ pass ; <- The keyword 'pass'
+
+ "A"
+ fail ; <- The keyword 'fail'
+
+ "A <- 'a' B <- 'b'"
+ (Grammar (Definition (Identifier #\A) *)  ; <- Here we skip some of
+          (Definition (Identifier #\B) *)) ;    Definition's children
+
+ "A <- 'a'"
+ (Grammar (*)) ; <- Here we specify a child tree of any type
+
+ "A <- [a-z] *[a-z0-9]"
+ (Grammar (Definition (Identifier #\A) (LeftArrow) (Alternation *)))
+
+ "A <- 'a'"
+ (Grammar (Definition (Identifier #\A)
+            (LeftArrow) (Alternation (Sequence (Unit (Literal (LChar #\a)))))))
+ )
+-------------------------------------------------------------------------------
+
+
+
+== Modular Grammars ==
+
+It is sometimes desirable to have a grammar split across multiple files and to
+have a final grammar built from those files. We can do this by using a
+modular grammar.
+
+Having our grammar split in this way provides us with the opportunity to
+manipulate the definition of the non-terminals and, in the process, create new
+languages. Depending on how we compose our final grammar, we can create vastly
+different languages from the same base grammars and only need to change the one
+modular grammar.
+
+One of the biggest advantages of modular grammars is that they make it very
+easy to embed one language within another. Many languages can be thought of in
+this way. Prime examples are when a programming language is embedded within XML
+or HTML. Or, going the other way, you could embed a data language like SQL
+within a programming language.
+
+There are also cases when a language's syntax changes subtly over time. We
+want to have parsers for each version of the language but without duplicating
+large parts of our grammars.
+
+
+=== Grammar Composition ===
+
+A modular grammar is made up of expressions that pull together non-modular
+grammars. Some modular expressions can have other expressions nested within
+them. An expression is one of the following:
+
+* '"grammar.waxeye"' +
+  A path to a '.waxeye' file. This path should either be relative to the
+  modular grammar or be an absolute path.
+
+* '(rename modular-exp (old-name . new-name) ...)' +
+  Renames the specified non-terminals with their new names.
+
+* '(only modular-exp non-term ...)' +
+  Includes only the listed non-terminals.
+
+* '(all-except modular-exp non-term ...)' +
+  Includes all non-terminals except those listed.
+
+* '(prefix prefix modular-exp)' +
+   Prefixes the names of non-terminals from 'modular-exp'.
+
+* '(prefix-only prefix modular-exp non-term ...)' +
+  Prefixes only the listed non-terminals.
+
+* '(prefix-all-except prefix modular-exp non-term ...)' +
+  Prefixes all non-terminals except those listed.
+
+* '(join modular-exp ...)' +
+  Combines the results of multiple modular expressions into a single
+  expression. Not needed at the top-level.
+
+
+.grammars/modular/mod.scm
+[source,scheme]
+-------------------------------------------------------------------------------
+;; A contrived example where we replace the definition of Number in Json with a
+;; much simpler one that only supports integers.
+
+(all-except "../json.waxeye" Number)
+
+(rename (only "../num.waxeye" Num) (Num . Number))
+-------------------------------------------------------------------------------
+
+
+
+== Waxeye Options ==
+
+-------------------------------------------------------------------------------
+waxeye [ <option> ... ] <grammar>
+ where <option> is one of
+ Waxeye modes:
+/ -g <language> <dir> : Generate
+| -i : Interpret
+\ -t <test> : Test
+ Grammar options:
+  -m : Modular Grammar - default: false
+  -s <start> : Starting non-terminal - default: first non-terminal
+ Parser options:
+  -c <comment> : Header comment for generated files - default: none
+  -e <eof> : Check parser consumes all input - default: true
+  -n <namespace> : Module or package namespace - default: none
+  -p <prefix> : Name prefix for generated files - default: none
+ Misc options:
+  --debug : Activates debug information
+  --version : Prints version number and copyright notice
+  --help, -h : Show this help
+  -- : Do not treat any remaining argument as a switch (at this level)
+ /|\ Brackets indicate mutually exclusive options.
+ Multiple single-letter switches can be combined after one `-'; for
+  example: `-h-' is the same as `-h --'
+-------------------------------------------------------------------------------
+
+=== Waxeye Modes ===
+
+-------------------------------------------------------------------------------
+grammar
+-------------------------------------------------------------------------------
+
+The grammar file describing the language you want to parse. It is the last
+argument given to Waxeye and is required by all of Waxeye's operating modes.
+
+
+==== Generate ====
+
+-------------------------------------------------------------------------------
+-g <language> <dir>
+-------------------------------------------------------------------------------
+
+Creates a parser written in the specified programming language. Writes the
+parser's files to the specified directory.
+
+Currently supported programming languages:
+
+* scheme
+
+-------------------------------------------------------------------------------
+waxeye -g scheme . grammar.waxeye
+-------------------------------------------------------------------------------
+
+
+==== Interpret ====
+
+-------------------------------------------------------------------------------
+-i
+-------------------------------------------------------------------------------
+
+Parses input as a string from the language defined by the grammar. Displays the
+resulting AST or parse error.
+
+-------------------------------------------------------------------------------
+waxeye -i grammar.waxeye < input.txt
+-------------------------------------------------------------------------------
+
+
+==== Test ====
+
+-------------------------------------------------------------------------------
+-t <test>
+-------------------------------------------------------------------------------
+
+Runs the tests in the specified test file for the language defined by the
+grammar. Displays any test errors.
+
+-------------------------------------------------------------------------------
+waxeye -t tests.scm grammar.waxeye
+-------------------------------------------------------------------------------
+
+
+=== Grammar Options ===
+
+-------------------------------------------------------------------------------
+-m
+-------------------------------------------------------------------------------
+
+Indicates that the grammar is a modular grammar.
+
+-------------------------------------------------------------------------------
+-s <start>
+-------------------------------------------------------------------------------
+
+Specifies the non-terminal that starts the language. Default - The first
+non-terminal in the grammar.
+
+
+=== Parser Options ===
+
+-------------------------------------------------------------------------------
+-c <comment>
+-------------------------------------------------------------------------------
+
+The file to be used as the header comment of generated files. Default - none.
+
+
+-------------------------------------------------------------------------------
+-e <eof>
+-------------------------------------------------------------------------------
+
+Whether to check that the parser consumes all input. Default - true.
+
+
+-------------------------------------------------------------------------------
+-n <namespace>
+-------------------------------------------------------------------------------
+
+The module or package namespace. Default - none.
+
+
+-------------------------------------------------------------------------------
+-p <prefix>
+-------------------------------------------------------------------------------
+
+The name prefix for any generated files. Default - none.
+
+
+=== Misc Options ===
+
+-------------------------------------------------------------------------------
+--debug
+-------------------------------------------------------------------------------
+
+Activates debug information.
+
+
+-------------------------------------------------------------------------------
+--version
+-------------------------------------------------------------------------------
+
+Prints the version number and copyright notice.
+
+
+-------------------------------------------------------------------------------
+--help, -h
+-------------------------------------------------------------------------------
+
+Prints a message describing the available command-line options.
+
+
+///////////////////////////////////////////////////////////////////////////////
+== Grammar Cookbook ==
+
+This chapter gives you recipes for some of the common situations faced when
+writing grammars.
+
+=== Removing Implicit Information ===
+
+e.g.
+
+Assignment <- Variable '=' Expression
+
+Change to:
+Assignment <- Variable :'=' Expression
+
+
+=== Whitespace ===
+
+TODO
+
+=== Comments ===
+
+* Single-line comments
+* Multi-line comments
+* Nested comments
+
+=== End of Line Encoding ===
+
+TODO
+
+=== Quoted Strings ===
+
+TODO
+
+=== Delimited Lists ===
+
+TODO
+
+=== Optionally Delimited Expressions ===
+
+TODO
+
+=== Escape Sequences ===
+
+TODO
+
+=== Nested Expressions ===
+
+TODO
+
+=== Arithmetic Expressions ===
+
+TODO
+
+=== Case Insensitive Keywords ===
+
+TODO
+
+=== Keywords as Identifiers ===
+
+TODO
+
+=== Embedded Languages ===
+
+TODO
+///////////////////////////////////////////////////////////////////////////////
+
+Copyright (C) 2008-2021 Orlando Hill
+
+This work is licensed under a
+http://creativecommons.org/licenses/by-nc-sa/4.0/[Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International License].

@@ -1,0 +1,2 @@
+This is the parser for Waxeye grammar files. It was generated from the grammar
+'grammars/waxeye.waxeye'.
