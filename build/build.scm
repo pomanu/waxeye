@@ -47,7 +47,7 @@ mzscheme
  (cp-dist "grammars")
  (cp-dist "lib")
  (cp-dist "LICENSE.md")
- (cp-dist "README")
+ (cp-dist "README.md")
  (cp-dist "src")
  (cp-dist "test")
 
