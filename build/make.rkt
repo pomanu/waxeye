@@ -1,12 +1,13 @@
-(module
-make
-mzscheme
+#lang racket/base
 
-(require (only (lib "list.ss") foldr sort) (lib "process.ss") (only "../src/waxeye/util.scm" display-ln))
+(require (only-in racket/system system)
+         (only-in "../src/waxeye/util.rkt" display-ln))
+
 (provide ^ $ ++ cd cd$ run-cmd run-make target)
 
-(define *target-table* (make-hash-table))
-(define *dep-table* (make-hash-table))
+
+(define *target-table* (make-hash))
+(define *dep-table* (make-hash))
 
 (define ++ string-append)
 
@@ -14,20 +15,21 @@ mzscheme
   (syntax-rules ()
     ((_ name (deps ...) code ...)
      ;; bind target name to code
-     (hash-table-put! *target-table*
-                      'name
-                      (lambda ()
-                        ;; run dependencies
-                        (for-each run-target '(deps ...))
-                        ;; run code
-                        code ...)))))
+     (hash-set!
+       *target-table*
+       'name
+       (lambda ()
+         ;; run dependencies
+         (for-each run-target '(deps ...))
+         ;; run code
+         code ...)))))
 
 
 (define (run-target t)
-  (let ((t-code (hash-table-get *target-table* t #f)))
+  (let ((t-code (hash-ref *target-table* t #f)))
     (if t-code
-        (unless (hash-table-get *dep-table* t #f)
-                (hash-table-put! *dep-table* t #t)
+        (unless (hash-ref *dep-table* t #f)
+                (hash-set! *dep-table* t #t)
                 (apply t-code ()))
         (error 'make (++ "target doesn't exist - " (symbol->string t))))))
 
@@ -39,7 +41,7 @@ mzscheme
         ;; print all possible targets
         (begin
           (display-ln "possible targets:")
-          (for-each display-ln (sort (map symbol->string (hash-table-map *target-table* (lambda (k v) k))) string<?)))
+          (for-each display-ln (sort (map symbol->string (hash-map *target-table* (lambda (k v) k))) string<?)))
         ;; otherwise run targets
         (for-each run-target args))))
 
@@ -86,5 +88,3 @@ mzscheme
   (syntax-rules ()
     ((_ dir code ...)
      (cd$ 'dir code ...))))
-
-)

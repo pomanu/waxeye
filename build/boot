@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./build/waxeye -g scheme src/waxeye/ -c src/waxeye/header.txt -p grammar grammars/waxeye.waxeye
+./build/waxeye -g racket src/waxeye/ -c src/waxeye/header.txt -p grammar grammars/waxeye.waxeye

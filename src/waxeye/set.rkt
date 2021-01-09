@@ -1,8 +1,7 @@
-(module
-set
-mzscheme
+#lang racket/base
 
 (provide subset?)
+
 
 ;; Is 'b' a subset of 'a'?
 (define (subset? a b)
@@ -22,5 +21,3 @@ mzscheme
                     (if (and (char<=? (car aa) (car bb)) (char<=? (cdr bb) (cdr aa)))
                         (subset? a (cdr b))
                         (subset? (cdr a) b))))))))
-
-)

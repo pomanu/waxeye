@@ -1,12 +1,14 @@
-(module
-dfa
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye")
-         (lib "fa.ss" "waxeye")
-         (lib "set.ss" "waxeye")
-         (only (lib "list.ss" "mzlib") filter memf)
-         "debug.scm" "gen.scm" "nfa.scm" "set.scm" "util.scm")
+(require waxeye/ast
+         waxeye/fa
+         waxeye/set
+         "debug.rkt"
+         "gen.rkt"
+         "nfa.rkt"
+         "set.rkt"
+         "util.rkt")
+
 (provide make-automata)
 
 
@@ -14,29 +16,36 @@ mzscheme
   (reset-nfa-builder)
   (let ((dfas (map make-dfa (ast-c grammar)))
         (unwind-dfas (map make-unwind-dfa unwinds))
-        (nt-table (make-hash-table 'equal))
+        (nt-table (make-hash))
         (i 0))
-    ;; Replace each non-term string reference in the state with the non-term's index
-    (define (nt-edges state)
-      (set-state-edges! state (map (lambda (a)
-                                     (if (or (string? (edge-t a)) (integer? (edge-t a))) ;; If the transition is a non-terminal or unwind
-                                         (make-edge (hash-table-get nt-table (edge-t a)) (edge-s a) (edge-v a)) ;; Create edge using the new index
-                                         a)) ;; Otherwise, leave as it is
-                                   (state-edges state))))
-    (for-each (lambda (a) (hash-table-put! nt-table (car a) i) (set! i (+ i 1))) dfas) ;; Hash the nt indexes against their names
+    ;; Replace each non-term string reference in the state with the
+    ;; non-term's index
+    (define (nt-edges s)
+      (set-state-edges!
+        s
+        (map
+          (lambda (a)
+            ;; If the transition is a non-terminal or unwind
+            (if (or (string? (edge-t a)) (integer? (edge-t a)))
+              ;; Create edge using the new index
+              (edge (hash-ref nt-table (edge-t a)) (edge-s a) (edge-v a))
+              ;; Otherwise, leave as it is
+              a))
+          (state-edges s))))
+    (for-each (lambda (a) (hash-set! nt-table (car a) i) (set! i (+ i 1))) dfas) ;; Hash the nt indexes against their names
     ;; Hash the unwind indexes against their old index
     (let loop ((u-dfas unwind-dfas) (j 0))
       (when (not (null? u-dfas))
-            (hash-table-put! nt-table j i)
+            (hash-set! nt-table j i)
             (set! i (+ i 1))
             (loop (cdr u-dfas) (+ j 1))))
     (set! dfas (append dfas unwind-dfas))
     (for-each (lambda (a) (for-each nt-edges (cadr a))) dfas) ;; Replace the non-term names with indexes
     (list->vector (map (lambda (a)
-                         (make-fa (if (string? (car a))
-                                      (string->symbol (car a))
-                                      (car a))
-                                  (list->vector (cadr a)) (caddr a)))
+                         (fa (if (string? (car a))
+                                 (string->symbol (car a))
+                                 (car a))
+                             (list->vector (cadr a)) (caddr a)))
                        dfas))))
 
 
@@ -72,7 +81,7 @@ mzscheme
 
 
 (define (nfa->dfa nfa)
-  (let ((state-table (make-hash-table 'equal))
+  (let ((state-table (make-hash))
         (state-list '())
         (state-count 0))
 
@@ -80,41 +89,42 @@ mzscheme
     ;; This includes the starting state
     (define (e-closure state-index)
       (define (e-closure-rec state-index e-table)
-        (let ((hv (hash-table-get e-table state-index #f)))
+        (let ((hv (hash-ref e-table state-index #f)))
           (if hv
               hv
               (let ((l (list state-index)))
-                (hash-table-put! e-table state-index '())
+                (hash-set! e-table state-index '())
                 (for-each (lambda (a)
                             (when (and (equal? (edge-t a) 'e) (not (member (edge-s a) l)))
                                   (set! l (append l (e-closure-rec (edge-s a) e-table)))))
                           (state-edges (vector-ref nfa state-index)))
-                (hash-table-put! e-table state-index l)
+                (hash-set! e-table state-index l)
                 l))))
-      (e-closure-rec state-index (make-hash-table 'equal)))
+      (e-closure-rec state-index (make-hash)))
 
     (define (make-dfa-edges state-set)
       (map (lambda (a)
-             (make-edge (edge-t a)
-                        (get-dfa-state (list-concat (map (lambda (b)
-                                                           (e-closure b))
-                                                         (edge-s a))))
-                        (edge-v a)))
+             (edge
+               (edge-t a)
+               (get-dfa-state (list-concat (map e-closure (edge-s a))))
+               (edge-v a)))
            (group-edges (compact-edges (get-edges nfa state-set)))))
 
     (define (get-dfa-state state-set)
-      (let ((state-num (hash-table-get state-table state-set #f)))
+      (let ((state-num (hash-ref state-table state-set #f)))
         (if state-num
             state-num
             (begin
-              (hash-table-put! state-table state-set state-count)
+              (hash-set! state-table state-set state-count)
               (set! state-num state-count)
               (set! state-count (+ state-count 1))
-              (let ((new-state (make-state #f
-                                           ;; Is our state-set an end state?
-                                           (not (not (memf (lambda (a)
-                                                             (state-match (vector-ref nfa a)))
-                                                           state-set))))))
+              (let ((new-state (state
+                                 #f
+                                 ;; Is our state-set an end state?
+                                 (not (not (memf
+                                             (lambda (a)
+                                               (state-match (vector-ref nfa a)))
+                                             state-set))))))
                 ;; Ensure prefix traversal
                 (set! state-list (cons new-state state-list))
 
@@ -131,14 +141,14 @@ mzscheme
       '()
       (let ((cur-edge (car edge-list)) (rest (group-edges (cdr edge-list))))
         (if (null? rest)
-            (list (make-edge (edge-t cur-edge) (list (edge-s cur-edge)) (edge-v cur-edge)))
+            (list (edge (edge-t cur-edge) (list (edge-s cur-edge)) (edge-v cur-edge)))
             (let ((next-edge (car rest)))
               ;; If the transition is the same
               (if (and (equal? (edge-t cur-edge) (edge-t next-edge))
                        (equal? (edge-v cur-edge) (edge-v next-edge)))
                   ;; Merge the edges
-                  (cons (make-edge (edge-t cur-edge) (cons (edge-s cur-edge) (edge-s next-edge)) (edge-v cur-edge)) (cdr rest))
-                  (cons (make-edge (edge-t cur-edge) (list (edge-s cur-edge)) (edge-v cur-edge)) rest)))))))
+                  (cons (edge (edge-t cur-edge) (cons (edge-s cur-edge) (edge-s next-edge)) (edge-v cur-edge)) (cdr rest))
+                  (cons (edge (edge-t cur-edge) (list (edge-s cur-edge)) (edge-v cur-edge)) rest)))))))
 
 
 ;; Remove duplicate edges and edges with transitions that are subsets of others
@@ -162,16 +172,16 @@ mzscheme
 ;; Does that to maintain correct ordering
 ;; Avoids getting edges from a state twice
 (define (get-edges state-vector state-set)
-  (let ((ht (make-hash-table)) (l '()))
-    (define (get-edges-rec state)
+  (let ((ht (make-hash)) (l '()))
+    (define (get-edges-rec s)
       ;; if we haven't got the edges of this state
-      (unless (hash-table-get ht state #f)
-              (hash-table-put! ht state #t)
-              (for-each (lambda (edge)
-                          (if (equal? (edge-t edge) 'e)
-                              (get-edges-rec (edge-s edge))
-                              (set! l (cons edge l))))
-                        (state-edges (vector-ref state-vector state)))))
+      (unless (hash-ref ht s #f)
+              (hash-set! ht s #t)
+              (for-each (lambda (e)
+                          (if (equal? (edge-t e) 'e)
+                              (get-edges-rec (edge-s e))
+                              (set! l (cons e l))))
+                        (state-edges (vector-ref state-vector s)))))
     (for-each get-edges-rec state-set)
     (reverse l)))
 
@@ -190,5 +200,3 @@ mzscheme
                         (state-edges a))
               (display-ln ") " (state-match a)))
             state-vector))
-
-)

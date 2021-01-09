@@ -1,5 +1,5 @@
 #!/bin/bash
 
-raco exe -o waxeye src/waxeye/waxeye.scm
+raco exe -o waxeye src/waxeye/waxeye.rkt
 raco distribute . waxeye
 rm waxeye

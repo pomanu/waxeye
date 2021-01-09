@@ -1,9 +1,8 @@
-(module
-ast
-scheme
+#lang racket/base
 
-(require (only-in (lib "9.ss" "srfi") define-record-type))
-(require (only-in scheme/list remove-duplicates))
+(require (only-in racket/list remove-duplicates)
+         (only-in racket/string string-join))
+
 (provide (all-defined-out))
 
 
@@ -11,24 +10,11 @@ scheme
 ;;
 ;; t = The type of the ast as a symbol
 ;; c = The list of the ast's children as nested asts or characters
-;; p = The position of the ast in the original string as a pair of start and end indexes
-(define-record-type :ast
-  (make-ast t c p)
-  ast?
-  (t ast-t ast-t!)
-  (c ast-c ast-c!)
-  (p ast-p ast-p!))
+;; p = The position of the ast in the original string,
+;;     a pair of start and end indexes
+(struct ast (t c p) #:mutable)
 
-
-(define-record-type :parse-error
-  (make-parse-error pos line col expected received snippet)
-  parse-error?
-  (pos parse-error-pos parse-error-pos!)
-  (line parse-error-line parse-error-line!)
-  (col parse-error-col parse-error-col!)
-  (expected parse-error-expected parse-error-expected!)
-  (received parse-error-received parse-error-received!)
-  (snippet parse-error-snippet parse-error-snippet!))
+(struct parse-error (pos line col expected received snippet))
 
 
 (define (ast->string ast)
@@ -61,12 +47,11 @@ scheme
 
 
 (define (display-ast ast)
-  (display
+  (displayln
    (cond
     ((ast? ast) (ast->string ast))
     ((parse-error? ast) (parse-error->string ast))
-    (else ast)))
-  (newline))
+    (else ast))))
 
 
 (define (ast->string-sexpr ast)
@@ -106,7 +91,4 @@ scheme
 
 
 (define (display-parse-error error)
-  (display (parse-error->string error))
-  (newline))
-
-)
+  (displayln (parse-error->string error)))

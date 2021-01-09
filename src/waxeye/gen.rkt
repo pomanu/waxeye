@@ -1,10 +1,10 @@
-(module
-gen
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye")
-         (only (lib "1.ss" "srfi") list-index))
-(provide (all-defined))
+(require (only-in racket/list index-of)
+         waxeye/ast)
+
+(provide (all-defined-out))
+
 
 (define *eof-check* #t)
 (define *expression-level* '())
@@ -43,9 +43,8 @@ mzscheme
   (set! *start-name* name)
   (if (equal? *start-name* "")
       (start-name! (get-non-term (car (get-defs grammar))))
-      (let ((si (list-index (lambda (a)
-                              (equal? a *start-name*))
-                            (map get-non-term (get-defs grammar)))))
+      (let ((si (index-of (map get-non-term (get-defs grammar))
+                          *start-name*)))
         (if si
             (start-index! si)
             (error 'waxeye "Can't find definition of starting non-terminal: ~a" *start-name*)))))
@@ -83,5 +82,3 @@ mzscheme
 
 (define (get-alternation def)
   (caddr (ast-c def)))
-
-)

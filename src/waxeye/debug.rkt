@@ -1,8 +1,9 @@
-(module
-debug
-mzscheme
+#lang racket/base
 
-(provide debug *debug* debug!)
+(provide debug
+         *debug*
+         debug!)
+
 
 (define *debug* #f)
 
@@ -14,5 +15,3 @@ mzscheme
     ((_ a ...)
      (when *debug*
            a ...))))
-
-)

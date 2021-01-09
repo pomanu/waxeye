@@ -1,15 +1,14 @@
-(module
-interp
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye")
-         (lib "parser.ss" "waxeye")
-         "dfa.scm"
-         "gen.scm"
-         "scheme.scm"
-         "util.scm")
+(require waxeye/ast
+         waxeye/parser
+         "dfa.rkt"
+         "gen.rkt"
+         "racket.rkt"
+         "util.rkt")
 
-(provide dynamic-parser interpreter)
+(provide dynamic-parser
+         interpreter)
 
 
 (define (dynamic-parser grammar)
@@ -21,5 +20,3 @@ mzscheme
     (if (parse-error? input-ast)
         (display-parse-error input-ast)
         (display-ast input-ast))))
-
-)

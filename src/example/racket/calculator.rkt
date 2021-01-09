@@ -1,8 +1,6 @@
-(module
-calculator
-mzscheme
+#lang racket
 
-(require "parser.scm")
+(require "parser.rkt")
 
 ;; A commandline arithmetic calculator.
 
@@ -55,5 +53,3 @@ mzscheme
       (newline)
       (begin (calc input)
              (loop (rl)))))
-
-)

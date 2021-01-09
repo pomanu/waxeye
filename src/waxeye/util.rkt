@@ -1,9 +1,7 @@
-(module
-util
-mzscheme
+#lang racket/base
 
-(require (only (lib "list.ss") foldr))
-(provide (all-defined))
+(provide (all-defined-out))
+
 
 ;; Prints the value followed by a newline
 (define (print-ln . e)
@@ -25,5 +23,3 @@ mzscheme
 ;; Concatenates a list of strings
 (define (string-concat sl)
   (foldr string-append "" sl))
-
-)

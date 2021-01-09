@@ -1,11 +1,10 @@
-(module
-expand
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye")
-         (only (lib "list.ss" "mzlib") sort memf)
-         "gen.scm")
-(provide (all-defined))
+(require waxeye/ast
+         "gen.rkt")
+
+(provide (all-defined-out))
+
 
 (define (expand-grammar grammar)
   (define (lift-only-sub-exp visitor exp)
@@ -13,15 +12,15 @@ mzscheme
       (for-each visitor chil)
       (when (= (length chil) 1) ; When we only have the one exp
             (let ((only (car chil))); Lift that to become our new expression
-              (ast-t! exp (ast-t only))
-              (ast-c! exp (ast-c only))
-              (ast-p! exp (ast-p only))))))
+              (set-ast-t! exp (ast-t only))
+              (set-ast-c! exp (ast-c only))
+              (set-ast-p! exp (ast-p only))))))
 
   (define (visit-alternation exp)
     (lift-only-sub-exp visit-sequence exp))
 
   (define (visit-sequence exp)
-    (ast-c! exp (map expand-unit (ast-c exp)))
+    (set-ast-c! exp (map expand-unit (ast-c exp)))
     (lift-only-sub-exp visit-exp exp))
 
   (define (visit-only-child exp)
@@ -55,7 +54,7 @@ mzscheme
 (define (expand-unit exp)
   (define (make-prefix v e)
     (let ((r (car (ast-c v))))
-      (make-ast
+      (ast
        (cond
         ((equal? r #\*) 'closure)
         ((equal? r #\+) 'plus)
@@ -69,7 +68,7 @@ mzscheme
 
   (define (make-label v e)
     (let ((r (car (ast-c v))))
-      (make-ast 'label (list e) (cons 0 0))))
+      (ast 'label (list e) (cons 0 0))))
 
   (define (expand-unit-iter el)
     (let ((rest (cdr el)))
@@ -95,14 +94,14 @@ mzscheme
     (if (memf char-alphabetic? letters)
         (if (null? (cdr letters))
             (let ((c (car letters)))
-              (ast-t! exp 'charClass)
-              (ast-c! exp (cc-chil c)))
+              (set-ast-t! exp 'charClass)
+              (set-ast-c! exp (cc-chil c)))
             (begin
-              (ast-t! exp 'sequence)
-              (ast-c! exp (map (lambda (a)
-                                        (make-ast 'charClass (cc-chil a) (cons 0 0)))
-                                      letters))))
-        (ast-t! exp 'literal))))
+              (set-ast-t! exp 'sequence)
+              (set-ast-c! exp (map (lambda (a)
+                                 (ast 'charClass (cc-chil a) (cons 0 0)))
+                               letters))))
+        (set-ast-t! exp 'literal))))
 
 
 (define (convert-char c)
@@ -124,7 +123,7 @@ mzscheme
 
 
 (define (convert-chars! exp)
-  (ast-c! exp (map convert-char (ast-c exp))))
+  (set-ast-c! exp (map convert-char (ast-c exp))))
 
 
 (define (visit-literal exp)
@@ -187,6 +186,4 @@ mzscheme
                                        (cdr rest)))
                             (cons a (minimise rest))))))))))
 
-  (ast-c! exp (minimise (sort (map cc-part (ast-c exp)) cc-less-than?))))
-
-)
+  (set-ast-c! exp (minimise (sort (map cc-part (ast-c exp)) cc-less-than?))))

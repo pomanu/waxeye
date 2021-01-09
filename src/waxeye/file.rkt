@@ -1,8 +1,7 @@
-(module
-file
-mzscheme
+#lang racket/base
 
-(provide (all-defined))
+(provide (all-defined-out))
+
 
 (define (input-as-string port)
   (define (input-as-iter)
@@ -25,5 +24,3 @@ mzscheme
           '()
           (cons ch (file-as-iter stream)))))
   (call-with-input-file path file-as-iter))
-
-)

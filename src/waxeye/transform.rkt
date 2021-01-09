@@ -1,13 +1,16 @@
-(module
-transform
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye") "action.scm" "expand.scm" "gen.scm" "util.scm")
-(provide (all-defined))
+(require waxeye/ast
+         "action.rkt"
+         "expand.rkt"
+         "gen.rkt"
+         "util.rkt")
+
+(provide (all-defined-out))
 
 
 ;; The hash table for the names of the non-terminals
-(define nt-names (make-hash-table 'equal))
+(define nt-names (make-hash))
 
 
 ;; Transforms the grammar and performs sanity checks
@@ -27,12 +30,12 @@ mzscheme
 (define (collect-nt-names g)
   (let ((ok #t))
     (for-each (lambda (a)
-                (let* ((name (get-non-term a)) (found (hash-table-get nt-names name #f)))
+                (let* ((name (get-non-term a)) (found (hash-ref nt-names name #f)))
                   (if found
                       (begin
                         (set! ok #f)
                         (error 'check-duplicate "duplicate definition of non-terminal: ~a" name))
-                      (hash-table-put! nt-names name name))))
+                      (hash-set! nt-names name name))))
               (ast-c g))
     ok))
 
@@ -41,7 +44,7 @@ mzscheme
 (define (check-refs grammar)
   (define (visit-nt exp)
     (let ((name (list->string (ast-c exp))))
-      (unless (hash-table-get nt-names name #f)
+      (unless (hash-ref nt-names name #f)
               (error 'waxeye "undefined reference to non-terminal: ~a" name))))
 
   (define (visit-alternation exp)
@@ -66,5 +69,3 @@ mzscheme
     (visit-alternation (caddr (ast-c def))))
 
   (for-each check-nt-refs (get-defs grammar)))
-
-)

@@ -1,8 +1,8 @@
-(module
-build
-mzscheme
+#lang racket/base
 
-(require "make.scm" "../src/waxeye/version.scm")
+(require "make.rkt"
+         "../src/waxeye/version.rkt")
+
 
 (define *name* "waxeye")
 (define *doc-book* "/usr/local/docbook")
@@ -79,4 +79,3 @@ mzscheme
 
 
 (run-make)
-)

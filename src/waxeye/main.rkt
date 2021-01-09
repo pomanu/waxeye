@@ -1,20 +1,20 @@
-(module
-main
-mzscheme
+#lang racket/base
 
-(require waxeye/ast
-         scheme/cmdline
-         "debug.scm"
-         "file.scm"
-         "gen.scm"
-         "interp.scm"
-         "load.scm"
-         "scheme.scm"
-         "tester.scm"
-         "transform.scm"
-         "util.scm"
-         "version.scm")
+(require (only-in racket/cmdline command-line)
+         waxeye/ast
+         "debug.rkt"
+         "file.rkt"
+         "gen.rkt"
+         "interp.rkt"
+         "load.rkt"
+         "racket.rkt"
+         "tester.rkt"
+         "transform.rkt"
+         "util.rkt"
+         "version.rkt")
+
 (provide main)
+
 
 (define *grammar-path* #f)
 (define *grammar-test* #f)
@@ -66,7 +66,7 @@ mzscheme
    ("-g" language dir
     "Generate"
     (set! *target-lang* (case (string->symbol language)
-                          ((scheme) gen-scheme)
+                          ((racket) gen-racket)
                           (else #f)))
     (set! *output-path* (if (equal? (string-ref dir (- (string-length dir) 1)) #\/)
                             dir
@@ -123,5 +123,3 @@ mzscheme
 
 (define (display-help)
   (parse-args '("--help")))
-
-)

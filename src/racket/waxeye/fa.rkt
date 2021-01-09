@@ -1,19 +1,16 @@
-(module
-fa
-mzscheme
+#lang racket/base
 
-(provide (all-defined))
+(provide (all-defined-out))
+
 
 ;; t - The transition cost
 ;; s - The state to transition to
 ;; v - If the result of the cost should be included in the tree
-(define-struct edge (t s v))
+(struct edge (t s v) #:mutable)
 
-(define-struct state (edges match))
+(struct state (edges match) #:mutable)
 
 ;; type - string if Non-Terminal
 ;; states - a vector of states
 ;; mode - the automaton mode
-(define-struct fa (type states mode))
-
-)
+(struct fa (type states mode) #:mutable)

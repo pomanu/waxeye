@@ -1,8 +1,12 @@
-(module
-tester
-scheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye") "gen.scm" "interp.scm" "scheme.scm" (only-in "util.scm" display-ln))
+(require (only-in racket/list take)
+         waxeye/ast
+         "gen.rkt"
+         "interp.rkt"
+         "racket.rkt"
+         (only-in "util.rkt" display-ln))
+
 (provide tester)
 
 
@@ -82,5 +86,3 @@ scheme
            (or (equal? (car expect) '*)
                (and (is-expected? (car res) (car expect))
                     (children-match? (cdr res) (cdr expect)))))))
-
-)

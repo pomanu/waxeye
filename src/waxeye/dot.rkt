@@ -1,13 +1,11 @@
-(module
-dot
-mzscheme
+#lang racket/base
 
-(require "util.scm")
+(require "util.rkt")
 
 
 (define (display-dot name state)
-  (let ((visited (make-hash-table)))
-    (hash-table-put! visited state "match")
+  (let ((visited (make-hash)))
+    (hash-set! visited state "match")
     (display-ln "digraph " name " {")
     (display-state visited state)
     (display-ln "\"match\" [ label = \"match\" ];")
@@ -16,12 +14,12 @@ mzscheme
 
 (define (display-state visited state)
   (define (get-state-name table state)
-    (let ((val (hash-table-get table state #f)))
+    (let ((val (hash-ref table state #f)))
       (if val
           val
           (begin
             (let ((v2 (gensym)))
-              (hash-table-put! table state v2)
+              (hash-set! table state v2)
               v2)))))
   (unless (state-match state)
           (display-ln "\"" (get-state-name visited state) "\""
@@ -33,6 +31,3 @@ mzscheme
                                   "[ label = \"" (car a) "\" ];")
                       (display-state visited (cdr a)))
                     (state-edges state))))
-
-
-)

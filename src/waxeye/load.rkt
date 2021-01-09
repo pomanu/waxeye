@@ -1,15 +1,14 @@
-(module
-load
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye")
-         (only (lib "list.ss" "mzlib") filter)
-         "file.scm"
-         "gen.scm"
-         "grammar-parser.scm"
-         "interp.scm"
-         "util.scm")
-(provide load-grammar modular-grammar!)
+(require waxeye/ast
+         "file.rkt"
+         "gen.rkt"
+         "grammar-parser.rkt"
+         "interp.rkt"
+         "util.rkt")
+
+(provide load-grammar
+         modular-grammar!)
 
 
 (define *modular-grammar* #f)
@@ -17,7 +16,7 @@ mzscheme
   (set! *modular-grammar* val))
 
 
-(define *load-cache* (make-hash-table 'equal))
+(define *load-cache* (make-hash))
 
 
 (define (load-grammar path)
@@ -27,13 +26,13 @@ mzscheme
 
 
 (define (load-waxeye-grammar path)
-  (let ((v (hash-table-get *load-cache* path #f)))
+  (let ((v (hash-ref *load-cache* path #f)))
     (if v
         v
         (let ((grammar-tree (grammar-parser (file-as-string path))))
           (if (ast? grammar-tree)
               (begin
-                (hash-table-put! *load-cache* path grammar-tree)
+                (hash-set! *load-cache* path grammar-tree)
                 grammar-tree)
               (error 'waxeye (string-append "syntax error in grammar " path "\n" (parse-error->string grammar-tree))))))))
 
@@ -46,9 +45,13 @@ mzscheme
           '()
           (cons m (read-modular i)))))
   (let ((base-path (call-with-values (lambda () (split-path path)) (lambda (a b c) a))))
-    (make-ast 'grammar (list-concat (map (lambda (a)
-                                           (resolve-modular a base-path))
-                                         (call-with-input-file path read-modular))) (cons 0 0))))
+    (ast
+      'grammar
+      (list-concat (map
+                     (lambda (a)
+                       (resolve-modular a base-path))
+                     (call-with-input-file path read-modular)))
+      (cons 0 0))))
 
 
 ;; Resolve the modular expression
@@ -73,7 +76,7 @@ mzscheme
 
 
 (define (rename-list nts names)
-  (let ((t (make-hash-table 'equal)))
+  (let ((t (make-hash)))
     (define (visit-alternation exp)
       (visit-multi-child visit-sequence exp))
 
@@ -81,7 +84,7 @@ mzscheme
       (visit-multi-child visit-exp exp))
 
     (define (visit-multi-child visitor exp)
-      (make-ast (ast-t exp) (map visitor (ast-c exp)) (ast-p exp)))
+      (ast (ast-t exp) (map visitor (ast-c exp)) (ast-p exp)))
 
     (define (visit-unit exp)
       (define (visit-unit-children cs)
@@ -89,15 +92,19 @@ mzscheme
           (if (null? rest)
               (list (visit-exp c))
               (cons c (visit-unit-children rest)))))
-      (make-ast (ast-t exp)
-                (visit-unit-children (ast-c exp))
-                (ast-p exp)))
+      (ast
+        (ast-t exp)
+        (visit-unit-children (ast-c exp))
+        (ast-p exp)))
 
     (define (visit-ident exp)
       (let* ((name (string->symbol (list->string (ast-c exp))))
-             (new-name (hash-table-get t name #f)))
+             (new-name (hash-ref t name #f)))
         (if new-name
-            (make-ast (ast-t exp) (string->list (symbol->string new-name)) (ast-p exp))
+            (ast
+              (ast-t exp)
+              (string->list (symbol->string new-name))
+              (ast-p exp))
             exp)))
 
     (define (visit-exp exp)
@@ -117,19 +124,20 @@ mzscheme
 
     (define (rename nt)
       (let* ((name (string->symbol (get-non-term nt)))
-             (new-name (hash-table-get t name #f)))
-        (make-ast
+             (new-name (hash-ref t name #f)))
+        (ast
          (ast-t nt)
-         `(,(make-ast 'identifier
-                      (string->list (symbol->string (if new-name
-                                                        new-name
-                                                        name)))
-                      (cons 0 0))
+         `(,(ast
+              'identifier
+              (string->list (symbol->string (if new-name
+                                                new-name
+                                                name)))
+              (cons 0 0))
            ,(cadr (ast-c nt))
            ,(visit-alternation (caddr (ast-c nt))))
          (ast-p nt))))
     (for-each (lambda (a)
-                (hash-table-put! t (car a) (cdr a)))
+                (hash-set! t (car a) (cdr a)))
               names)
     (map rename nts)))
 
@@ -182,5 +190,3 @@ mzscheme
   (list-concat (map (lambda (a)
                       (resolve-modular a base-path))
                     exps)))
-
-)

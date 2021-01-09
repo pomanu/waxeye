@@ -1,9 +1,10 @@
-(module
-action
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye") "gen.scm")
-(provide (all-defined))
+(require waxeye/ast
+         "gen.rkt")
+
+(provide (all-defined-out))
+
 
 (define *action-list* '())
 
@@ -34,5 +35,3 @@ mzscheme
 
   (for-each get-def-actions (get-defs grammar))
   (set! *action-list* (reverse *action-list*)))
-
-)

@@ -1,12 +1,13 @@
-(module
-parser
-mzscheme
+#lang racket/base
 
-(require (lib "ast.ss" "waxeye") (lib "fa.ss" "waxeye") (lib "set.ss" "waxeye"))
+(require waxeye/ast
+         waxeye/fa
+         waxeye/set)
+
 (provide make-parser)
 
 
-(define-struct cache-item (val pos line col cr))
+(struct cache-item (val pos line col cr))
 
 
 (define (make-parser start eof-check automata)
@@ -21,10 +22,10 @@ mzscheme
            (error-col 0)
            (error-expected '())
            (fa-stack '())
-           (cache (make-hash-table 'equal)))
+           (cache (make-hash)))
 
       (define (match-automaton index)
-        (let* ((key (cons index input-pos)) (value (hash-table-get cache key #f)))
+        (let* ((key (cons index input-pos)) (value (hash-ref cache key #f)))
           (if value
               (begin
                 (restore-pos (cache-item-pos value) (cache-item-line value) (cache-item-col value) (cache-item-cr value))
@@ -41,9 +42,19 @@ mzscheme
                                (start-cr last-cr)
                                (res (match-state (vector-ref states 0))))
                            (cond
-                            ((equal? type '&) (restore-pos start-pos start-line start-col start-cr) (not (not res)))
+                            ((equal? type '&)
+                             (restore-pos
+                               start-pos
+                               start-line
+                               start-col
+                               start-cr)
+                             (not (not res)))
                             ((equal? type '!)
-                             (restore-pos start-pos start-line start-col start-cr)
+                             (restore-pos
+                               start-pos
+                               start-line
+                               start-col
+                               start-cr)
                              (if res
                                  (update-error)
                                  #t))
@@ -59,15 +70,25 @@ mzscheme
                                      ((null? (cdr res))
                                       (car res))
                                      (else
-                                      (make-ast type res (cons start-pos input-pos)))))
+                                      (ast
+                                        type
+                                        res
+                                        (cons start-pos input-pos)))))
                                    ((leftArrow)
-                                    (make-ast type res (cons start-pos input-pos)))
-                                   (else (error 'waxeye "Unknown automaton mode")))
+                                    (ast
+                                      type
+                                      res
+                                      (cons start-pos input-pos)))
+                                   (else
+                                     (error 'waxeye "Unknown automaton mode")))
                                  ;; Don't need to restore here since we already did
                                  (update-error)))))))
                   ;; Pop from the fa-stack
                   (set! fa-stack (cdr fa-stack))
-                  (hash-table-put! cache key (make-cache-item v input-pos line column last-cr))
+                  (hash-set!
+                    cache
+                    key
+                    (cache-item v input-pos line column last-cr))
                   v)))))
 
       (define (match-state state)
@@ -85,12 +106,12 @@ mzscheme
                   (match-edges (cdr edges))))))
 
       ;; If the transition was made
-      (define (match-edge edge)
+      (define (match-edge e)
         (let* ((start-pos input-pos)
                (start-line line)
                (start-col column)
                (start-cr last-cr)
-               (t (edge-t edge))
+               (t (edge-t e))
                (res (cond
                      ;; If we have a wild card expression
                      ((equal? 'wild t) (if (< input-pos input-len)
@@ -110,9 +131,9 @@ mzscheme
           ;; If we are able to transition to the next state
           (if res
               ;; Move to next state
-              (let ((tran-res (match-state (vector-ref (fa-states (caar fa-stack)) (edge-s edge)))))
+              (let ((tran-res (match-state (vector-ref (fa-states (caar fa-stack)) (edge-s e)))))
                 (if tran-res
-                    (if (or (edge-v edge) (equal? res #t))
+                    (if (or (edge-v e) (equal? res #t))
                         tran-res
                         (cons res tran-res))
                     (begin
@@ -164,10 +185,22 @@ mzscheme
         (if res
             (if (and eof-check (< input-pos input-len))
                 ;; Create a parse error - Not all input consumed
-                (make-parse-error error-pos error-line error-col error-expected (received) (snippet))
+                (parse-error
+                  error-pos
+                  error-line
+                  error-col
+                  error-expected
+                  (received)
+                  (snippet))
                 res)
             ;; Create a parse error
-            (make-parse-error error-pos error-line error-col error-expected (received) (snippet))))
+            (parse-error
+              error-pos
+              error-line
+              error-col
+              error-expected
+              (received)
+              (snippet))))
 
       (define (received)
         (if (= error-pos input-len)
@@ -205,5 +238,3 @@ mzscheme
                 (build-snippet (- error-pos ss) (+ error-pos ee))))))
 
       (do-eof-check (match-automaton start)))))
-
-)

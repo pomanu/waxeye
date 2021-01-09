@@ -2,14 +2,14 @@ Waxeye Parser Generator
 =======================
 
 Waxeye is a parser generator based on parsing expression grammars (PEGs). It
-currently supports Scheme.
+currently supports Racket.
 
 
 Features
 --------
 
 * Choice of Programming Language
-  - Scheme
+  - Racket
 
 * Scanner-less Parsing
 
@@ -71,14 +71,14 @@ Building from Source
 
 1. Install [Racket](http://racket-lang.org)
 
-2. Install Waxeye's backend for Scheme.
+2. Install Waxeye's backend for Racket.
    * Unix and OSX
 
-     `sudo ln -s /usr/local/waxeye/src/scheme/waxeye /usr/local/racket/lib/racket/collects/`
+     `sudo ln -s /usr/local/waxeye/src/racket/waxeye /usr/local/racket/lib/racket/collects/`
 
    * Windows
 
-     Copy the directory `src/scheme/waxeye` into your Racket `collects`
+     Copy the directory `src/racket/waxeye` into your Racket `collects`
      directory. For example, `C:\Program Files\Racket\collects`.
 
 3. Build Waxeye
