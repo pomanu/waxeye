@@ -1,25 +1,22 @@
 Waxeye Parser Generator
 =======================
 
-Waxeye is a parser generator based on parsing expression grammars (PEGs). It
-currently supports Racket.
+Waxeye is a parser generator based on parsing expression grammars (PEGs).
+
+Currently supported programming languages:
+* Racket
 
 
 Features
 --------
 
-* Choice of Programming Language
-  - Racket
+* Language-agnostic, modular, composable grammars
 
-* Scanner-less Parsing
+* Automatic AST generation
 
-* Automatic AST Generation
+* Command-line grammar interpreter
 
-* Language Independent, Reusable Grammars
-
-* Modular, Composable Grammars
-
-* Grammar Testing
+* Grammar testing DSL
 
 
 User Manual
